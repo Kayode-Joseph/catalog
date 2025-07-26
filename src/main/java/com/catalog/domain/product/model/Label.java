@@ -1,0 +1,32 @@
+package com.catalog.domain.product.model;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.ManyToOne;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.apache.commons.lang3.builder.ToStringExclude;
+
+@Entity
+@Data
+@NoArgsConstructor
+public class Label {
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    private String name;
+    private Double score;
+
+    @ManyToOne
+    @ToStringExclude
+    @JsonIgnore
+    private Product product;
+
+    public Label(String name, Double score) {
+        this.name = name;
+        this.score = score;
+    }
+}
