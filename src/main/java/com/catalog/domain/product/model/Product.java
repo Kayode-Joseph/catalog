@@ -42,4 +42,6 @@ public class Product {
 
     @ManyToOne
     private Merchant merchant;
+
+    private Integer quantity;
 }
