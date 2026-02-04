@@ -1,8 +1,9 @@
 package com.catalog.domain.product.component;
 
+import com.catalog.domain.product.model.LabelType;
+import com.catalog.domain.product.model.ProductLabel;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -33,22 +34,14 @@ public class FashionClipLabelGenerator implements LabelGenerator {
             ResponseEntity<String> response = restTemplate.postForEntity(PYTHON_API_URL, request, String.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                List<FashionClipResponse> results = objectMapper.readValue(
-                        response.getBody(),
-                        new TypeReference<List<FashionClipResponse>>() {}
-                );
-
-                Set<Label> labels = new HashSet<>();
-                for (FashionClipResponse r : results) {
-                    labels.add(new Label(r.getLabel(), r.getScore()));
-                }
-                return labels;
+                return classifyLabels(objectMapper.readValue(response.getBody(), ProductLabel.class));
             }
+            log.error("Failed to fetch labels from Labelling service. Failed with status code: {}", response.getStatusCode());
+            throw new RuntimeException("Failed to fetch labels from Labelling service. Failed with status code:" + response.getStatusCode());
         } catch (Exception e) {
             log.error("Failed to fetch labels from Python service", e);
+            throw new RuntimeException(e);
         }
-
-        return Collections.emptySet();
     }
 
     public Map<String, Set<String>> getPossibleLabels() {
@@ -58,7 +51,8 @@ public class FashionClipLabelGenerator implements LabelGenerator {
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 Map<String, Set<String>> labelsMap = objectMapper.readValue(
                         response.getBody(),
-                        new TypeReference<Map<String, Set<String>>>() {}
+                        new TypeReference<Map<String, Set<String>>>() {
+                        }
                 );
                 return labelsMap;
             }
@@ -70,9 +64,15 @@ public class FashionClipLabelGenerator implements LabelGenerator {
         return Collections.emptyMap();
     }
 
-    @Data
-    private static class FashionClipResponse {
-        private String label;
-        private double score;
+    private static Set<Label> classifyLabels(ProductLabel labels) {
+        labels.getLabels().forEach(label ->{
+            label.setType(LabelType.LABEL);
+        });
+
+        labels.getCategory().setType(LabelType.CATEGORY);
+        labels.getBrand().setType(LabelType.BRAND);
+        labels.getLabels().add(labels.getCategory());
+        labels.getLabels().add(labels.getBrand());
+        return labels.getLabels();
     }
 }
